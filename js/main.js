@@ -116,8 +116,7 @@ function setupGameCallbacks() {
     const levelEl = document.getElementById("level");
     if (levelEl) levelEl.textContent = level;
 
-    // 레벨업 알림
-    showNotification(`Level ${level}!`, "level-up");
+    // 레벨업 오버레이가 표시되므로 추가 알림 불필요
   });
 
   // 게임 종료 콜백

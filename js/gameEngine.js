@@ -36,6 +36,11 @@ class GameEngine {
     this.levelTimeLimit = 20; // 각 단계당 20초
     this.levelTimeRemaining = this.levelTimeLimit;
 
+    // 레벨업 대기 상태
+    this.isLevelUpPause = false;
+    this.levelUpCountdown = 3;
+    this.levelUpCountdownTimer = null;
+
     // 아이템 생성 타이머
     this.itemSpawnTimer = null;
 
@@ -108,12 +113,102 @@ class GameEngine {
     this.level++;
     this.levelTimeRemaining = this.levelTimeLimit;
 
+    // 레벨업 대기 시작
+    this.pauseForLevelUp();
+  }
+
+  /**
+   * 레벨업 대기 (게임 일시 정지)
+   */
+  pauseForLevelUp() {
+    this.isLevelUpPause = true;
+    this.levelUpCountdown = 3;
+
+    // 타이머 일시 중단
+    clearInterval(this.levelTimer);
+
+    // 아이템 생성 중단
+    clearInterval(this.itemSpawnTimer);
+
+    // 축하 화면 표시
+    this.showLevelUpOverlay();
+
+    // 카운트다운 시작
+    this.startLevelUpCountdown();
+  }
+
+  /**
+   * 레벨업 카운트다운
+   */
+  startLevelUpCountdown() {
+    this.levelUpCountdownTimer = setInterval(() => {
+      this.levelUpCountdown--;
+      this.updateLevelUpCountdown();
+
+      if (this.levelUpCountdown <= 0) {
+        clearInterval(this.levelUpCountdownTimer);
+        this.resumeAfterLevelUp();
+      }
+    }, 1000);
+  }
+
+  /**
+   * 레벨업 후 재개
+   */
+  resumeAfterLevelUp() {
+    this.isLevelUpPause = false;
+
+    // 축하 화면 숨기기
+    this.hideLevelUpOverlay();
+
+    // 타이머 재시작
+    this.startLevelTimer();
+
+    // 아이템 생성 재시작 (속도 증가 적용)
+    this.restartItemSpawner();
+
+    // 레벨 변경 콜백
     if (this.onLevelChange) {
       this.onLevelChange(this.level);
     }
+  }
 
-    // 아이템 생성 속도 증가
-    this.restartItemSpawner();
+  /**
+   * 레벨업 오버레이 표시
+   */
+  showLevelUpOverlay() {
+    const overlay = document.getElementById("levelup-overlay");
+    if (overlay) {
+      const levelNumber = document.getElementById("levelup-number");
+      const levelScore = document.getElementById("levelup-score");
+      const levelTimer = document.getElementById("levelup-timer");
+
+      if (levelNumber) levelNumber.textContent = this.level;
+      if (levelScore) levelScore.textContent = this.score;
+      if (levelTimer) levelTimer.textContent = this.levelUpCountdown;
+
+      overlay.style.display = "flex";
+    }
+  }
+
+  /**
+   * 레벨업 오버레이 숨기기
+   */
+  hideLevelUpOverlay() {
+    const overlay = document.getElementById("levelup-overlay");
+    if (overlay) {
+      overlay.style.display = "none";
+    }
+  }
+
+  /**
+   * 레벨업 카운트다운 업데이트
+   */
+  updateLevelUpCountdown() {
+    const levelTimer = document.getElementById("levelup-timer");
+    if (levelTimer) {
+      levelTimer.textContent = this.levelUpCountdown;
+    }
   }
 
   /**
@@ -199,7 +294,7 @@ class GameEngine {
     const updateInterval = 1000 / 60; // 60 FPS
 
     this.itemUpdateTimer = setInterval(() => {
-      if (!this.isGameActive) return;
+      if (!this.isGameActive || this.isLevelUpPause) return; // 레벨업 대기 시 정지
 
       const deltaTime = updateInterval / 1000; // 초 단위
 
@@ -410,6 +505,11 @@ class GameEngine {
     if (this.itemUpdateTimer) {
       clearInterval(this.itemUpdateTimer);
       this.itemUpdateTimer = null;
+    }
+
+    if (this.levelUpCountdownTimer) {
+      clearInterval(this.levelUpCountdownTimer);
+      this.levelUpCountdownTimer = null;
     }
   }
 
