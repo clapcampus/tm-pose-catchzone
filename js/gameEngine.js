@@ -41,6 +41,9 @@ class GameEngine {
     this.levelUpCountdown = 3;
     this.levelUpCountdownTimer = null;
 
+    // 레벨 종료 상태 (아이템 처리 대기)
+    this.isLevelEnding = false;
+
     // 아이템 생성 타이머
     this.itemSpawnTimer = null;
 
@@ -99,11 +102,31 @@ class GameEngine {
       // 시간 UI 업데이트
       this.updateTimeUI();
 
-      // 단계 시간 종료 → 다음 단계로
+      // 단계 시간 종료 → 레벨 종료 시작 (아이템 처리 대기)
       if (this.levelTimeRemaining <= 0) {
-        this.nextLevel();
+        this.startLevelEnding();
       }
     }, 1000);
+  }
+
+  /**
+   * 레벨 종료 시작 (아이템 처리 대기)
+   */
+  startLevelEnding() {
+    this.isLevelEnding = true;
+
+    // 타이머 중단
+    clearInterval(this.levelTimer);
+
+    // 새로운 아이템 생성 중단
+    clearInterval(this.itemSpawnTimer);
+
+    // 화면에 아이템이 없으면 즉시 레벨업
+    if (this.items.length === 0) {
+      this.nextLevel();
+    }
+    // 아이템이 있으면 모두 처리될 때까지 대기
+    // (itemUpdateTimer에서 마지막 아이템 처리 시 nextLevel 호출)
   }
 
   /**
@@ -112,6 +135,7 @@ class GameEngine {
   nextLevel() {
     this.level++;
     this.levelTimeRemaining = this.levelTimeLimit;
+    this.isLevelEnding = false; // 플래그 리셋
 
     // 레벨업 대기 시작
     this.pauseForLevelUp();
@@ -218,7 +242,7 @@ class GameEngine {
     const spawnInterval = this.getItemSpawnInterval();
 
     this.itemSpawnTimer = setInterval(() => {
-      if (this.isGameActive) {
+      if (this.isGameActive && !this.isLevelEnding) {
         this.spawnItem();
       }
     }, spawnInterval);
@@ -306,6 +330,11 @@ class GameEngine {
         if (item.progress >= 1.0) {
           this.handleItemReachedBottom(item);
           this.items.splice(index, 1);
+
+          // 레벨 종료 중이고 마지막 아이템이면 레벨업
+          if (this.isLevelEnding && this.items.length === 0) {
+            this.nextLevel();
+          }
         }
       });
 
