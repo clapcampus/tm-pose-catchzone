@@ -1,43 +1,75 @@
 /**
  * gameEngine.js
- * 게임 단계, 명령, 점수, 제한시간 등 게임 규칙 전체를 담당
+ * Catch Zone 게임 로직 전체를 담당
  *
- * 포즈 인식을 활용한 게임 로직을 관리하는 엔진
- * (현재는 기본 템플릿이므로 향후 게임 로직 추가 가능)
+ * - 3개 구역(LEFT, CENTER, RIGHT) 시스템
+ * - 아이템 생성 및 낙하 (폭탄, 사과, 배, 오렌지)
+ * - 충돌 감지 및 점수 계산
+ * - 놓침 카운트 (2번 미스 → 게임 오버)
+ * - 단계 시스템 (20초마다 레벨업, 낙하속도 증가)
  */
 
 class GameEngine {
   constructor() {
+    // 게임 상태
+    this.isGameActive = false;
     this.score = 0;
     this.level = 1;
-    this.timeLimit = 0;
-    this.currentCommand = null;
-    this.isGameActive = false;
-    this.gameTimer = null;
-    this.onCommandChange = null; // 명령 변경 콜백
-    this.onScoreChange = null; // 점수 변경 콜백
-    this.onGameEnd = null; // 게임 종료 콜백
+    this.missCount = 0;
+    this.maxMisses = 2;
+
+    // 바구니 위치 (LEFT, CENTER, RIGHT)
+    this.basketPosition = "CENTER";
+    this.zones = ["LEFT", "CENTER", "RIGHT"];
+
+    // 아이템 설정
+    this.items = [];
+    this.itemTypes = [
+      { type: "bomb", icon: "💣", points: 0, isBomb: true },
+      { type: "apple", icon: "🍎", points: 100, isBomb: false },
+      { type: "pear", icon: "🍐", points: 150, isBomb: false },
+      { type: "orange", icon: "🍊", points: 200, isBomb: false }
+    ];
+
+    // 단계 시스템
+    this.levelTimer = null;
+    this.levelTimeLimit = 20; // 각 단계당 20초
+    this.levelTimeRemaining = this.levelTimeLimit;
+
+    // 아이템 생성 타이머
+    this.itemSpawnTimer = null;
+
+    // 콜백
+    this.onScoreChange = null;
+    this.onMissChange = null;
+    this.onLevelChange = null;
+    this.onGameEnd = null;
+    this.onBasketMove = null;
   }
 
   /**
    * 게임 시작
-   * @param {Object} config - 게임 설정 { timeLimit, commands }
    */
-  start(config = {}) {
+  start() {
     this.isGameActive = true;
     this.score = 0;
     this.level = 1;
-    this.timeLimit = config.timeLimit || 60; // 기본 60초
-    this.commands = config.commands || []; // 게임 명령어 배열
+    this.missCount = 0;
+    this.basketPosition = "CENTER";
+    this.items = [];
+    this.levelTimeRemaining = this.levelTimeLimit;
 
-    if (this.timeLimit > 0) {
-      this.startTimer();
-    }
+    // UI 초기화
+    this.updateUI();
 
-    // 첫 번째 명령 발급 (게임 모드일 경우)
-    if (this.commands.length > 0) {
-      this.issueNewCommand();
-    }
+    // 단계 타이머 시작
+    this.startLevelTimer();
+
+    // 아이템 생성 시작
+    this.startItemSpawner();
+
+    // 아이템 업데이트 루프 시작
+    this.startItemUpdater();
   }
 
   /**
@@ -45,7 +77,7 @@ class GameEngine {
    */
   stop() {
     this.isGameActive = false;
-    this.clearTimer();
+    this.clearTimers();
 
     if (this.onGameEnd) {
       this.onGameEnd(this.score, this.level);
@@ -53,95 +85,355 @@ class GameEngine {
   }
 
   /**
-   * 타이머 시작
+   * 단계 타이머 시작
    */
-  startTimer() {
-    this.gameTimer = setInterval(() => {
-      this.timeLimit--;
+  startLevelTimer() {
+    this.levelTimer = setInterval(() => {
+      this.levelTimeRemaining--;
 
-      if (this.timeLimit <= 0) {
-        this.stop();
+      // 시간 UI 업데이트
+      this.updateTimeUI();
+
+      // 단계 시간 종료 → 다음 단계로
+      if (this.levelTimeRemaining <= 0) {
+        this.nextLevel();
       }
     }, 1000);
   }
 
   /**
-   * 타이머 정리
+   * 다음 단계로 진행
    */
-  clearTimer() {
-    if (this.gameTimer) {
-      clearInterval(this.gameTimer);
-      this.gameTimer = null;
+  nextLevel() {
+    this.level++;
+    this.levelTimeRemaining = this.levelTimeLimit;
+
+    if (this.onLevelChange) {
+      this.onLevelChange(this.level);
+    }
+
+    // 아이템 생성 속도 증가
+    this.restartItemSpawner();
+  }
+
+  /**
+   * 아이템 생성기 시작
+   */
+  startItemSpawner() {
+    const spawnInterval = this.getItemSpawnInterval();
+
+    this.itemSpawnTimer = setInterval(() => {
+      if (this.isGameActive) {
+        this.spawnItem();
+      }
+    }, spawnInterval);
+  }
+
+  /**
+   * 아이템 생성기 재시작 (레벨업 시)
+   */
+  restartItemSpawner() {
+    clearInterval(this.itemSpawnTimer);
+    this.startItemSpawner();
+  }
+
+  /**
+   * 아이템 생성 간격 계산
+   * 단계별 낙하 시간의 60%~80% 사이 랜덤 값
+   */
+  getItemSpawnInterval() {
+    const dropTime = this.getDropTime();
+    const minInterval = dropTime * 0.6;
+    const maxInterval = dropTime * 0.8;
+    return (minInterval + Math.random() * (maxInterval - minInterval)) * 1000;
+  }
+
+  /**
+   * 아이템 낙하 시간 계산 (초 단위)
+   * 1단계: 2.0초, 2단계: 1.8초, ... (0.2초씩 감소, 최소 0.6초)
+   */
+  getDropTime() {
+    const baseDropTime = 2.0;
+    const decreasePerLevel = 0.2;
+    const minDropTime = 0.6;
+    return Math.max(baseDropTime - (this.level - 1) * decreasePerLevel, minDropTime);
+  }
+
+  /**
+   * 아이템 생성
+   */
+  spawnItem() {
+    // 랜덤 구역 선택
+    const zone = this.zones[Math.floor(Math.random() * this.zones.length)];
+
+    // 랜덤 아이템 타입 선택 (폭탄 20% 확률)
+    const isBomb = Math.random() < 0.2;
+    let itemType;
+
+    if (isBomb) {
+      itemType = this.itemTypes[0]; // 폭탄
+    } else {
+      // 과일 중 랜덤 선택
+      const fruitTypes = this.itemTypes.slice(1);
+      itemType = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+    }
+
+    const item = {
+      id: Date.now() + Math.random(),
+      zone: zone,
+      type: itemType.type,
+      icon: itemType.icon,
+      points: itemType.points,
+      isBomb: itemType.isBomb,
+      progress: 0, // 0 ~ 1 (낙하 진행도)
+      dropTime: this.getDropTime()
+    };
+
+    this.items.push(item);
+  }
+
+  /**
+   * 아이템 업데이트 루프
+   */
+  startItemUpdater() {
+    const updateInterval = 1000 / 60; // 60 FPS
+
+    this.itemUpdateTimer = setInterval(() => {
+      if (!this.isGameActive) return;
+
+      const deltaTime = updateInterval / 1000; // 초 단위
+
+      this.items.forEach((item, index) => {
+        // 낙하 진행도 업데이트
+        item.progress += deltaTime / item.dropTime;
+
+        // 아이템이 바닥에 도달했을 때
+        if (item.progress >= 1.0) {
+          this.handleItemReachedBottom(item);
+          this.items.splice(index, 1);
+        }
+      });
+
+      // 아이템 UI 렌더링
+      this.renderItems();
+    }, updateInterval);
+  }
+
+  /**
+   * 아이템이 바닥에 도달했을 때 처리
+   */
+  handleItemReachedBottom(item) {
+    // 바구니와 같은 구역인지 확인
+    if (item.zone === this.basketPosition) {
+      // 아이템 획득
+      this.catchItem(item);
+    } else {
+      // 아이템 놓침 (폭탄은 놓침으로 카운트 안 함)
+      if (!item.isBomb) {
+        this.missItem();
+      }
     }
   }
 
   /**
-   * 새로운 명령 발급
+   * 아이템 획득
    */
-  issueNewCommand() {
-    if (this.commands.length === 0) return;
-
-    const randomIndex = Math.floor(Math.random() * this.commands.length);
-    this.currentCommand = this.commands[randomIndex];
-
-    if (this.onCommandChange) {
-      this.onCommandChange(this.currentCommand);
+  catchItem(item) {
+    if (item.isBomb) {
+      // 폭탄 획득 → 즉시 게임 오버
+      this.gameOver("폭탄을 받았습니다!");
+    } else {
+      // 과일 획득 → 점수 증가
+      this.score += item.points;
+      if (this.onScoreChange) {
+        this.onScoreChange(this.score);
+      }
+      this.showFeedback(`+${item.points}점!`, item.zone, "success");
     }
   }
 
   /**
-   * 포즈 인식 결과 처리
-   * @param {string} detectedPose - 인식된 포즈 이름
+   * 아이템 놓침
    */
-  onPoseDetected(detectedPose) {
+  missItem() {
+    this.missCount++;
+
+    if (this.onMissChange) {
+      this.onMissChange(this.missCount);
+    }
+
+    if (this.missCount === 1) {
+      this.showFeedback("경고!", null, "warning");
+    } else if (this.missCount >= this.maxMisses) {
+      this.gameOver(`과일을 ${this.maxMisses}번 놓쳤습니다!`);
+    }
+  }
+
+  /**
+   * 게임 오버
+   */
+  gameOver(reason) {
+    this.stop();
+    alert(`게임 오버!\n${reason}\n\n최종 점수: ${this.score}\n도달 레벨: ${this.level}`);
+  }
+
+  /**
+   * 피드백 표시
+   */
+  showFeedback(message, zone, type) {
+    const feedbackEl = document.getElementById("feedback");
+    if (feedbackEl) {
+      feedbackEl.textContent = message;
+      feedbackEl.className = `feedback ${type}`;
+      feedbackEl.style.display = "block";
+
+      setTimeout(() => {
+        feedbackEl.style.display = "none";
+      }, 1000);
+    }
+  }
+
+  /**
+   * 바구니 이동
+   * @param {string} pose - "왼쪽", "정면", "오른쪽"
+   */
+  moveBasket(pose) {
     if (!this.isGameActive) return;
 
-    // 현재 명령과 일치하는지 확인
-    if (this.currentCommand && detectedPose === this.currentCommand) {
-      this.addScore(10); // 점수 추가
-      this.issueNewCommand(); // 새로운 명령 발급
+    // 포즈 → 구역 매핑
+    const poseToZone = {
+      "왼쪽": "LEFT",
+      "정면": "CENTER",
+      "오른쪽": "RIGHT"
+    };
+
+    const newPosition = poseToZone[pose];
+    if (newPosition && newPosition !== this.basketPosition) {
+      this.basketPosition = newPosition;
+
+      if (this.onBasketMove) {
+        this.onBasketMove(this.basketPosition);
+      }
+
+      // 바구니 위치 UI 업데이트
+      this.updateBasketUI();
     }
   }
 
   /**
-   * 점수 추가
-   * @param {number} points - 추가할 점수
+   * UI 업데이트
    */
-  addScore(points) {
-    this.score += points;
+  updateUI() {
+    // 점수 업데이트
+    const scoreEl = document.getElementById("score");
+    if (scoreEl) scoreEl.textContent = this.score;
 
-    // 레벨업 로직 (예: 100점마다)
-    if (this.score >= this.level * 100) {
-      this.level++;
-    }
+    // 레벨 업데이트
+    const levelEl = document.getElementById("level");
+    if (levelEl) levelEl.textContent = this.level;
 
-    if (this.onScoreChange) {
-      this.onScoreChange(this.score, this.level);
-    }
+    // 미스 횟수 업데이트
+    const missEl = document.getElementById("miss-count");
+    if (missEl) missEl.textContent = `${this.missCount} / ${this.maxMisses}`;
+
+    // 시간 업데이트
+    this.updateTimeUI();
+
+    // 바구니 위치 업데이트
+    this.updateBasketUI();
   }
 
   /**
-   * 명령 변경 콜백 등록
-   * @param {Function} callback - (command) => void
+   * 시간 UI 업데이트
    */
-  setCommandChangeCallback(callback) {
-    this.onCommandChange = callback;
+  updateTimeUI() {
+    const timeEl = document.getElementById("time-remaining");
+    if (timeEl) timeEl.textContent = this.levelTimeRemaining;
   }
 
   /**
-   * 점수 변경 콜백 등록
-   * @param {Function} callback - (score, level) => void
+   * 바구니 UI 업데이트
+   */
+  updateBasketUI() {
+    // 모든 바구니에서 active 클래스 제거
+    document.querySelectorAll(".basket").forEach(basket => {
+      basket.classList.remove("active");
+    });
+
+    // 현재 위치의 바구니에 active 클래스 추가
+    const currentBasket = document.querySelector(`.basket[data-zone="${this.basketPosition}"]`);
+    if (currentBasket) {
+      currentBasket.classList.add("active");
+    }
+  }
+
+  /**
+   * 아이템 렌더링
+   */
+  renderItems() {
+    const gameArea = document.getElementById("game-area");
+    if (!gameArea) return;
+
+    // 기존 아이템 DOM 제거
+    const existingItems = gameArea.querySelectorAll(".item");
+    existingItems.forEach(el => el.remove());
+
+    // 아이템 렌더링
+    this.items.forEach(item => {
+      const itemEl = document.createElement("div");
+      itemEl.className = `item item-${item.type}`;
+      itemEl.textContent = item.icon;
+      itemEl.setAttribute("data-zone", item.zone);
+
+      // 위치 계산 (progress: 0 ~ 1)
+      const topPercent = item.progress * 100;
+      itemEl.style.top = `${topPercent}%`;
+
+      gameArea.appendChild(itemEl);
+    });
+  }
+
+  /**
+   * 타이머 정리
+   */
+  clearTimers() {
+    if (this.levelTimer) {
+      clearInterval(this.levelTimer);
+      this.levelTimer = null;
+    }
+
+    if (this.itemSpawnTimer) {
+      clearInterval(this.itemSpawnTimer);
+      this.itemSpawnTimer = null;
+    }
+
+    if (this.itemUpdateTimer) {
+      clearInterval(this.itemUpdateTimer);
+      this.itemUpdateTimer = null;
+    }
+  }
+
+  /**
+   * 콜백 등록
    */
   setScoreChangeCallback(callback) {
     this.onScoreChange = callback;
   }
 
-  /**
-   * 게임 종료 콜백 등록
-   * @param {Function} callback - (finalScore, finalLevel) => void
-   */
+  setMissChangeCallback(callback) {
+    this.onMissChange = callback;
+  }
+
+  setLevelChangeCallback(callback) {
+    this.onLevelChange = callback;
+  }
+
   setGameEndCallback(callback) {
     this.onGameEnd = callback;
+  }
+
+  setBasketMoveCallback(callback) {
+    this.onBasketMove = callback;
   }
 
   /**
@@ -152,8 +444,9 @@ class GameEngine {
       isActive: this.isGameActive,
       score: this.score,
       level: this.level,
-      timeRemaining: this.timeLimit,
-      currentCommand: this.currentCommand
+      missCount: this.missCount,
+      basketPosition: this.basketPosition,
+      itemCount: this.items.length
     };
   }
 }
