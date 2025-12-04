@@ -14,84 +14,88 @@
         <p class="subtitle">포즈 인식으로 과일을 받아요!</p>
       </header>
 
-      <!-- 컨트롤 버튼 -->
-      <div class="button-container">
-        <button type="button" id="startBtn" onclick="init()">Start</button>
-        <button type="button" id="stopBtn" onclick="stop()" disabled>Stop</button>
-      </div>
-
-      <!-- 게임 정보 -->
-      <div class="game-info">
-        <div class="info-item">
-          <span class="info-label">점수</span>
-          <span class="info-value" id="score">0</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">레벨</span>
-          <span class="info-value" id="level">1</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">시간</span>
-          <span class="info-value" id="time-remaining">20</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">미스</span>
-          <span class="info-value" id="miss-count">0 / 2</span>
-        </div>
-      </div>
-
-      <!-- 메인 게임 영역 -->
+      <!-- 메인 게임 영역 (좌우 분할) -->
       <div class="main-content">
-        <!-- 왼쪽: 웹캠 및 포즈 인식 -->
-        <div class="pose-section">
-          <div class="canvas-container">
-            <canvas id="canvas"></canvas>
-            <div id="max-prediction">대기 중...</div>
+        <!-- 왼쪽: 게임 정보 및 포즈 인식 -->
+        <div class="left-section">
+          <!-- 컨트롤 버튼 -->
+          <div class="button-container">
+            <button type="button" id="startBtn" onclick="init()">Start</button>
+            <button type="button" id="stopBtn" onclick="stop()" disabled>Stop</button>
           </div>
-          <div id="label-container"></div>
+
+          <!-- 게임 정보 -->
+          <div class="game-info">
+            <div class="info-item">
+              <span class="info-label">점수</span>
+              <span class="info-value" id="score">0</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">레벨</span>
+              <span class="info-value" id="level">1</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">시간</span>
+              <span class="info-value" id="time-remaining">20</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">미스</span>
+              <span class="info-value" id="miss-count">0 / 2</span>
+            </div>
+          </div>
+
+          <!-- 웹캠 및 포즈 인식 -->
+          <div class="pose-section">
+            <div class="canvas-container">
+              <canvas id="canvas"></canvas>
+              <div id="max-prediction">대기 중...</div>
+            </div>
+          </div>
+
+          <!-- 게임 설명 -->
+          <div class="instructions">
+            <h3>🎯 게임 방법</h3>
+            <ul>
+              <li><strong>왼쪽</strong> 포즈 → LEFT</li>
+              <li><strong>정면</strong> 포즈 → CENTER</li>
+              <li><strong>오른쪽</strong> 포즈 → RIGHT</li>
+              <li>🍎 +100점 | 🍐 +150점 | 🍊 +200점</li>
+              <li>💣 폭탄 = 게임오버</li>
+              <li>미스 2회 = 게임오버</li>
+            </ul>
+          </div>
         </div>
 
         <!-- 오른쪽: 게임 화면 -->
-        <div class="game-section">
-          <div id="game-area">
-            <!-- 3개 구역 -->
-            <div class="zone" data-zone="LEFT">
-              <span class="zone-label">LEFT</span>
-            </div>
-            <div class="zone" data-zone="CENTER">
-              <span class="zone-label">CENTER</span>
-            </div>
-            <div class="zone" data-zone="RIGHT">
-              <span class="zone-label">RIGHT</span>
+        <div class="right-section">
+          <div class="game-section">
+            <div id="game-area">
+              <!-- 3개 구역 -->
+              <div class="zone" data-zone="LEFT">
+                <span class="zone-label">LEFT</span>
+              </div>
+              <div class="zone" data-zone="CENTER">
+                <span class="zone-label">CENTER</span>
+              </div>
+              <div class="zone" data-zone="RIGHT">
+                <span class="zone-label">RIGHT</span>
+              </div>
+
+              <!-- 바구니 -->
+              <div class="baskets">
+                <div class="basket" data-zone="LEFT">🧺</div>
+                <div class="basket active" data-zone="CENTER">🧺</div>
+                <div class="basket" data-zone="RIGHT">🧺</div>
+              </div>
+
+              <!-- 아이템은 JS에서 동적으로 추가됨 -->
             </div>
 
-            <!-- 바구니 -->
-            <div class="baskets">
-              <div class="basket" data-zone="LEFT">🧺</div>
-              <div class="basket active" data-zone="CENTER">🧺</div>
-              <div class="basket" data-zone="RIGHT">🧺</div>
-            </div>
-
-            <!-- 아이템은 JS에서 동적으로 추가됨 -->
+            <!-- 피드백 메시지 -->
+            <div id="feedback" class="feedback" style="display: none;"></div>
+            <div id="notification" class="notification" style="display: none;"></div>
           </div>
-
-          <!-- 피드백 메시지 -->
-          <div id="feedback" class="feedback" style="display: none;"></div>
-          <div id="notification" class="notification" style="display: none;"></div>
         </div>
-      </div>
-
-      <!-- 게임 설명 -->
-      <div class="instructions">
-        <h3>🎯 게임 방법</h3>
-        <ul>
-          <li><strong>왼쪽</strong> 포즈 → LEFT 구역으로 바구니 이동</li>
-          <li><strong>정면</strong> 포즈 → CENTER 구역으로 바구니 이동</li>
-          <li><strong>오른쪽</strong> 포즈 → RIGHT 구역으로 바구니 이동</li>
-          <li>🍎 사과 +100점 | 🍐 배 +150점 | 🍊 오렌지 +200점</li>
-          <li>💣 폭탄을 받으면 게임 오버!</li>
-          <li>과일을 2번 놓치면 게임 오버!</li>
-        </ul>
       </div>
     </div>
 

@@ -510,7 +510,8 @@ class GameEngine {
       itemEl.setAttribute("data-zone", item.zone);
 
       // 위치 계산 (progress: 0 ~ 1)
-      const topPercent = item.progress * 100;
+      // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
+      const topPercent = item.progress * 140 - 20;
       itemEl.style.top = `${topPercent}%`;
 
       gameArea.appendChild(itemEl);
