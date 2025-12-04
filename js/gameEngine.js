@@ -320,9 +320,13 @@ class GameEngine {
     const updateInterval = 1000 / 60; // 60 FPS
 
     this.itemUpdateTimer = setInterval(() => {
-      if (!this.isGameActive || this.isLevelUpPause) return; // 레벨업 대기 시 정지
+      // 게임이 활성 상태가 아니거나 레벨업 대기 중이면 정지 (레벨 종료는 아이템 처리 계속)
+      if (!this.isGameActive || this.isLevelUpPause) return;
 
       const deltaTime = updateInterval / 1000; // 초 단위
+
+      // 제거할 아이템들 추적 (반복 중 배열 수정 방지)
+      const itemsToRemove = [];
 
       this.items.forEach((item) => {
         // caught 상태가 아닌 경우만 위치 업데이트
@@ -362,6 +366,24 @@ class GameEngine {
               }
               // processed는 true이지만 caught는 false이므로, 다음 프레임부터도 position 업데이트 계속됨
             }
+          }
+
+          // 아이템이 화면 아래로 떨어졌으면 제거
+          if (item.currentTop > 120) {
+            itemsToRemove.push(item);
+          }
+        }
+      });
+
+      // 화면 아래로 떨어진 아이템 제거
+      itemsToRemove.forEach((item) => {
+        const itemIndex = this.items.indexOf(item);
+        if (itemIndex > -1) {
+          this.items.splice(itemIndex, 1);
+
+          // 레벨 종료 중이고 마지막 아이템이면 레벨업
+          if (this.isLevelEnding && this.items.length === 0) {
+            this.nextLevel();
           }
         }
       });
