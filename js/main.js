@@ -84,20 +84,18 @@ async function init() {
 }
 
 /**
- * 애플리케이션 중지
+ * 게임만 중지 (웹캠은 계속 실행)
  */
 function stop() {
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
 
-  if (poseEngine) {
-    poseEngine.stop();
-  }
-
+  // 게임만 중지 (웹캠은 계속 실행)
   if (gameEngine && gameEngine.isGameActive) {
     gameEngine.stop();
   }
 
+  // Stabilizer 리셋
   if (stabilizer) {
     stabilizer.reset();
   }
