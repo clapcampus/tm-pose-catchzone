@@ -306,7 +306,8 @@ class GameEngine {
       isBomb: itemType.isBomb,
       currentTop: -20, // 아이템의 현재 top 위치 (-20% ~ 120%)
       dropTime: this.getDropTime(), // 낙하 소요 시간 (초)
-      caught: false // 포착 상태 (처음에는 false)
+      caught: false, // 포착 상태 (처음에는 false)
+      processed: false // 바구니 위치 도달 시 처리됨 (한 번만 처리하기 위해)
     };
 
     this.items.push(item);
@@ -330,14 +331,15 @@ class GameEngine {
           const distancePerSecond = 140 / item.dropTime; // 초당 낙하 거리
           item.currentTop += distancePerSecond * deltaTime;
 
-          // 아이템이 바구니 위치(85%)에 도달했을 때
-          if (item.currentTop >= 85) {
-            item.currentTop = 85; // 바구니 위치에 고정
+          // 아이템이 바구니 위치(85%)에 도달했을 때 (한 번만 처리)
+          if (item.currentTop >= 85 && !item.processed) {
+            item.processed = true; // 처리됨 표시
 
             // 바구니와 같은 구역인지 확인
             if (item.zone === this.basketPosition) {
               // 바구니로 받은 아이템만 caught 상태로 설정
               item.caught = true;
+              item.currentTop = 85; // 바구니 위치에 고정
               this.catchItem(item);
 
               // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
@@ -358,6 +360,7 @@ class GameEngine {
               if (!item.isBomb) {
                 this.missItem();
               }
+              // processed는 true이지만 caught는 false이므로, 다음 프레임부터도 position 업데이트 계속됨
             }
           }
         }
