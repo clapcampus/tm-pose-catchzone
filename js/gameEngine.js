@@ -560,26 +560,26 @@ class GameEngine {
       const itemId = item.id;
       let itemEl = existingItemDOMs.get(itemId);
 
-      // 새로운 아이템이거나 아직 DOM에 없으면 생성
-      if (!itemEl) {
-        itemEl = document.createElement("div");
-        itemEl.className = `item item-${item.type}`;
-        itemEl.textContent = item.icon;
-        itemEl.setAttribute("data-zone", item.zone);
-        itemEl.setAttribute("data-item-id", itemId);
-        gameArea.appendChild(itemEl);
-      }
-
-      // caught 상태가 아닌 경우 progress에 따라 위치 계산
+      // caught 상태가 아닌 경우만 렌더링
       if (!item.caught) {
+        // 새로운 아이템이거나 아직 DOM에 없으면 생성
+        if (!itemEl) {
+          itemEl = document.createElement("div");
+          itemEl.className = `item item-${item.type}`;
+          itemEl.textContent = item.icon;
+          itemEl.setAttribute("data-zone", item.zone);
+          itemEl.setAttribute("data-item-id", itemId);
+          gameArea.appendChild(itemEl);
+        }
+
         // 위치 계산 (progress: 0 ~ 1)
         // 아이템이 -20%에서 시작하여 120%까지 떨어짐
         const topPercent = item.progress * 140 - 20;
         itemEl.style.top = `${topPercent}%`;
         // fall 애니메이션을 비활성화하고 수동으로 위치 제어
         itemEl.style.animation = "none";
-      } else {
-        // caught 상태: 애니메이션을 itemCaught으로 변경
+      } else if (itemEl && !itemEl.classList.contains("caught")) {
+        // caught 상태로 변경될 때만 한 번 처리
         itemEl.classList.add("caught");
       }
     });
