@@ -322,19 +322,28 @@ class GameEngine {
 
       const deltaTime = updateInterval / 1000; // 초 단위
 
-      this.items.forEach((item, index) => {
+      this.items.forEach((item) => {
         // 낙하 진행도 업데이트
         item.progress += deltaTime / item.dropTime;
 
-        // 아이템이 바닥에 도달했을 때
-        if (item.progress >= 1.0) {
-          this.handleItemReachedBottom(item);
-          this.items.splice(index, 1);
+        // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
+        // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
+        if (item.progress >= 0.85 && !item.caught) {
+          item.caught = true; // 아이템을 caught 상태로 표시
+          this.handleItemReachedBasket(item);
 
-          // 레벨 종료 중이고 마지막 아이템이면 레벨업
-          if (this.isLevelEnding && this.items.length === 0) {
-            this.nextLevel();
-          }
+          // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
+          setTimeout(() => {
+            const itemIndex = this.items.indexOf(item);
+            if (itemIndex > -1) {
+              this.items.splice(itemIndex, 1);
+
+              // 레벨 종료 중이고 마지막 아이템이면 레벨업
+              if (this.isLevelEnding && this.items.length === 0) {
+                this.nextLevel();
+              }
+            }
+          }, 300);
         }
       });
 
@@ -344,9 +353,9 @@ class GameEngine {
   }
 
   /**
-   * 아이템이 바닥에 도달했을 때 처리
+   * 아이템이 바구니에 도달했을 때 처리
    */
-  handleItemReachedBottom(item) {
+  handleItemReachedBasket(item) {
     // 바구니와 같은 구역인지 확인
     if (item.zone === this.basketPosition) {
       // 아이템 획득
@@ -373,7 +382,32 @@ class GameEngine {
         this.onScoreChange(this.score);
       }
       this.showFeedback(`+${item.points}점!`, item.zone, "success");
+
+      // 바구니 흔들림 효과
+      this.playBasketCatchAnimation();
     }
+  }
+
+  /**
+   * 바구니 흔들림 애니메이션 재생
+   */
+  playBasketCatchAnimation() {
+    const basketEl = document.querySelector(`.basket[data-zone="${this.basketPosition}"]`);
+    if (!basketEl) return;
+
+    // 클래스 제거 (이전 애니메이션이 있었다면)
+    basketEl.classList.remove("catch");
+
+    // 리플로우를 강제로 트리거하여 애니메이션 재시작
+    void basketEl.offsetWidth;
+
+    // 클래스 추가
+    basketEl.classList.add("catch");
+
+    // 애니메이션 완료 후 클래스 제거
+    setTimeout(() => {
+      basketEl.classList.remove("catch");
+    }, 500);
   }
 
   /**
@@ -508,6 +542,11 @@ class GameEngine {
       itemEl.className = `item item-${item.type}`;
       itemEl.textContent = item.icon;
       itemEl.setAttribute("data-zone", item.zone);
+
+      // caught 상태인 경우 caught 클래스 추가
+      if (item.caught) {
+        itemEl.classList.add("caught");
+      }
 
       // 위치 계산 (progress: 0 ~ 1)
       // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
