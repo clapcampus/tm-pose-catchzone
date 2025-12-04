@@ -12,14 +12,9 @@ let stabilizer;
 let ctx;
 
 /**
- * 애플리케이션 초기화
+ * 웹캠 초기화 (페이지 로드 시 자동 실행)
  */
-async function init() {
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
-
-  startBtn.disabled = true;
-
+async function initWebcam() {
   try {
     // 1. PoseEngine 초기화
     poseEngine = new PoseEngine("./my_model/");
@@ -34,34 +29,58 @@ async function init() {
       smoothingFrames: 3
     });
 
-    // 3. GameEngine 초기화
-    gameEngine = new GameEngine();
-
-    // 4. 캔버스 설정
+    // 3. 캔버스 설정
     const canvas = document.getElementById("canvas");
     canvas.width = 200;
     canvas.height = 200;
     ctx = canvas.getContext("2d");
 
-    // 5. PoseEngine 콜백 설정
+    // 4. PoseEngine 콜백 설정
     poseEngine.setPredictionCallback(handlePrediction);
     poseEngine.setDrawCallback(drawPose);
 
-    // 6. GameEngine 콜백 설정
-    setupGameCallbacks();
-
-    // 7. PoseEngine 시작
+    // 5. PoseEngine 시작 (웹캠만 켜기, 게임은 아직)
     poseEngine.start();
 
-    // 8. 게임 자동 시작
+    console.log("웹캠 초기화 완료");
+  } catch (error) {
+    console.error("웹캠 초기화 중 오류 발생:", error);
+    alert("웹캠 초기화에 실패했습니다. 콘솔을 확인하세요.");
+  }
+}
+
+/**
+ * 게임 시작 (Start 버튼 클릭 시)
+ */
+function startGame() {
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+
+  startBtn.disabled = true;
+
+  try {
+    // GameEngine 초기화
+    gameEngine = new GameEngine();
+
+    // GameEngine 콜백 설정
+    setupGameCallbacks();
+
+    // 게임 시작
     gameEngine.start();
 
     stopBtn.disabled = false;
   } catch (error) {
-    console.error("초기화 중 오류 발생:", error);
-    alert("초기화에 실패했습니다. 콘솔을 확인하세요.");
+    console.error("게임 시작 중 오류 발생:", error);
+    alert("게임 시작에 실패했습니다. 콘솔을 확인하세요.");
     startBtn.disabled = false;
   }
+}
+
+/**
+ * 애플리케이션 초기화 (호환성 유지)
+ */
+async function init() {
+  await startGame();
 }
 
 /**

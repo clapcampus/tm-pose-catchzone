@@ -6,7 +6,7 @@
     <title>Catch Zone - 포즈 인식 게임</title>
     <link rel="stylesheet" href="./css/style.css" />
   </head>
-  <body>
+  <body onload="initWebcam()">
     <div class="container">
       <!-- 헤더 -->
       <header>
@@ -20,7 +20,7 @@
         <div class="left-section">
           <!-- 컨트롤 버튼 -->
           <div class="button-container">
-            <button type="button" id="startBtn" onclick="init()">Start</button>
+            <button type="button" id="startBtn" onclick="startGame()">Start</button>
             <button type="button" id="stopBtn" onclick="stop()" disabled>Stop</button>
           </div>
 
