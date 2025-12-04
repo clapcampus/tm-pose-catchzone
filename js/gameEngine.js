@@ -573,12 +573,13 @@ class GameEngine {
       // caught 상태인 경우 caught 클래스 추가
       if (item.caught) {
         itemEl.classList.add("caught");
+      } else {
+        // caught 상태가 아닌 경우만 위치 업데이트
+        // 위치 계산 (progress: 0 ~ 1)
+        // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
+        const topPercent = item.progress * 140 - 20;
+        itemEl.style.top = `${topPercent}%`;
       }
-
-      // 위치 계산 (progress: 0 ~ 1)
-      // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
-      const topPercent = item.progress * 140 - 20;
-      itemEl.style.top = `${topPercent}%`;
     });
   }
 
