@@ -330,14 +330,12 @@ class GameEngine {
         // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
         // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
         if (item.progress >= 0.85 && !item.caught) {
-          console.log(`[아이템 포착] 타입: ${item.type}, 구역: ${item.zone}, 바구니: ${this.basketPosition}`);
           item.caught = true; // 아이템을 caught 상태로 표시
           this.handleItemReachedBasket(item);
 
           // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
           setTimeout(() => {
             const itemIndex = this.items.indexOf(item);
-            console.log(`[아이템 제거] 타입: ${item.type}, 배열 인덱스: ${itemIndex}, 남은 아이템 수: ${this.items.length}`);
             if (itemIndex > -1) {
               this.items.splice(itemIndex, 1);
 
@@ -535,16 +533,39 @@ class GameEngine {
     const gameArea = document.getElementById("game-area");
     if (!gameArea) return;
 
-    // 기존 아이템 DOM 제거
-    const existingItems = gameArea.querySelectorAll(".item");
-    existingItems.forEach(el => el.remove());
+    // 현재 렌더링된 아이템들의 ID 추적
+    const existingItemDOMs = new Map();
+    gameArea.querySelectorAll(".item").forEach(el => {
+      const itemId = el.getAttribute("data-item-id");
+      if (itemId) {
+        existingItemDOMs.set(itemId, el);
+      }
+    });
+
+    // 현재 아이템 목록의 ID 추적
+    const currentItemIds = new Set(this.items.map(item => item.id));
+
+    // caught 상태가 아닌 기존 DOM 삭제
+    existingItemDOMs.forEach((el, itemId) => {
+      if (!currentItemIds.has(itemId)) {
+        el.remove();
+      }
+    });
 
     // 아이템 렌더링
     this.items.forEach(item => {
-      const itemEl = document.createElement("div");
-      itemEl.className = `item item-${item.type}`;
-      itemEl.textContent = item.icon;
-      itemEl.setAttribute("data-zone", item.zone);
+      const itemId = item.id;
+      let itemEl = existingItemDOMs.get(itemId);
+
+      // 새로운 아이템이거나 아직 DOM에 없으면 생성
+      if (!itemEl) {
+        itemEl = document.createElement("div");
+        itemEl.className = `item item-${item.type}`;
+        itemEl.textContent = item.icon;
+        itemEl.setAttribute("data-zone", item.zone);
+        itemEl.setAttribute("data-item-id", itemId);
+        gameArea.appendChild(itemEl);
+      }
 
       // caught 상태인 경우 caught 클래스 추가
       if (item.caught) {
@@ -555,8 +576,6 @@ class GameEngine {
       // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
       const topPercent = item.progress * 140 - 20;
       itemEl.style.top = `${topPercent}%`;
-
-      gameArea.appendChild(itemEl);
     });
   }
 
