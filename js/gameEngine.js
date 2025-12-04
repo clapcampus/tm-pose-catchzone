@@ -570,15 +570,23 @@ class GameEngine {
         gameArea.appendChild(itemEl);
       }
 
-      // caught 상태인 경우 caught 클래스 추가
+      // 위치 계산 (progress: 0 ~ 1)
+      // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
+      const topPercent = item.progress * 140 - 20;
+
+      // caught 상태인 경우만 처음 한 번만 위치 설정
+      // (이후로는 위치를 업데이트하지 않음)
       if (item.caught) {
+        // 첫 번째 caught 상태 프레임에만 위치 설정
+        if (!itemEl.hasAttribute("data-caught-positioned")) {
+          itemEl.style.top = `${topPercent}%`;
+          itemEl.setAttribute("data-caught-positioned", "true");
+        }
         itemEl.classList.add("caught");
       } else {
-        // caught 상태가 아닌 경우만 위치 업데이트
-        // 위치 계산 (progress: 0 ~ 1)
-        // 아이템이 -20%에서 시작하여 120%까지 떨어짐 (더 높은 곳에서 시작)
-        const topPercent = item.progress * 140 - 20;
+        // caught 상태가 아닌 경우는 매 프레임마다 위치 업데이트
         itemEl.style.top = `${topPercent}%`;
+        itemEl.removeAttribute("data-caught-positioned");
       }
     });
   }
