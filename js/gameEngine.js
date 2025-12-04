@@ -332,22 +332,33 @@ class GameEngine {
 
           // 아이템이 바구니 위치(85%)에 도달했을 때
           if (item.currentTop >= 85) {
-            item.caught = true; // 아이템을 caught 상태로 표시
             item.currentTop = 85; // 바구니 위치에 고정
-            this.handleItemReachedBasket(item);
 
-            // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
-            setTimeout(() => {
-              const itemIndex = this.items.indexOf(item);
-              if (itemIndex > -1) {
-                this.items.splice(itemIndex, 1);
+            // 바구니와 같은 구역인지 확인
+            if (item.zone === this.basketPosition) {
+              // 바구니로 받은 아이템만 caught 상태로 설정
+              item.caught = true;
+              this.catchItem(item);
 
-                // 레벨 종료 중이고 마지막 아이템이면 레벨업
-                if (this.isLevelEnding && this.items.length === 0) {
-                  this.nextLevel();
+              // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
+              setTimeout(() => {
+                const itemIndex = this.items.indexOf(item);
+                if (itemIndex > -1) {
+                  this.items.splice(itemIndex, 1);
+
+                  // 레벨 종료 중이고 마지막 아이템이면 레벨업
+                  if (this.isLevelEnding && this.items.length === 0) {
+                    this.nextLevel();
+                  }
                 }
+              }, 300);
+            } else {
+              // 바구니로 받지 않은 아이템: 계속 떨어짐
+              // missItem 호출 (폭탄은 카운트 안 함)
+              if (!item.isBomb) {
+                this.missItem();
               }
-            }, 300);
+            }
           }
         }
       });
@@ -571,17 +582,17 @@ class GameEngine {
         gameArea.appendChild(itemEl);
       }
 
+      // 위치 업데이트 (caught 여부와 관계없이)
+      itemEl.style.top = `${item.currentTop}%`;
+
       // caught 상태 확인
       if (item.caught) {
         // caught 상태: caught 클래스 추가하여 애니메이션 시작
         if (!itemEl.classList.contains("caught")) {
           itemEl.classList.add("caught");
-          // 위치를 고정 (애니메이션 시작 위치)
-          itemEl.style.top = `${item.currentTop}%`;
         }
       } else {
-        // caught 상태 아님: 위치만 업데이트
-        itemEl.style.top = `${item.currentTop}%`;
+        // caught 상태 아님: 애니메이션 비활성화
         itemEl.style.animation = "none";
       }
     });
