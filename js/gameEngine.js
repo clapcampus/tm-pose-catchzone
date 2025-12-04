@@ -352,8 +352,8 @@ class GameEngine {
                 if (itemIndex > -1) {
                   this.items.splice(itemIndex, 1);
 
-                  // 레벨 종료 중이고 마지막 아이템이면 레벨업
-                  if (this.isLevelEnding && this.items.length === 0) {
+                  // 게임이 활성 상태이고 레벨 종료 중이며 마지막 아이템이면 레벨업
+                  if (this.isGameActive && this.isLevelEnding && this.items.length === 0) {
                     this.nextLevel();
                   }
                 }
@@ -381,8 +381,8 @@ class GameEngine {
         if (itemIndex > -1) {
           this.items.splice(itemIndex, 1);
 
-          // 레벨 종료 중이고 마지막 아이템이면 레벨업
-          if (this.isLevelEnding && this.items.length === 0) {
+          // 게임이 활성 상태이고 레벨 종료 중이며 마지막 아이템이면 레벨업
+          if (this.isGameActive && this.isLevelEnding && this.items.length === 0) {
             this.nextLevel();
           }
         }
