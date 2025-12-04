@@ -324,27 +324,30 @@ class GameEngine {
       const deltaTime = updateInterval / 1000; // 초 단위
 
       this.items.forEach((item) => {
-        // 낙하 진행도 업데이트
-        item.progress += deltaTime / item.dropTime;
+        // caught 상태가 아닌 경우만 낙하 진행도 업데이트
+        if (!item.caught) {
+          item.progress += deltaTime / item.dropTime;
 
-        // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
-        // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
-        if (item.progress >= 0.85 && !item.caught) {
-          item.caught = true; // 아이템을 caught 상태로 표시
-          this.handleItemReachedBasket(item);
+          // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
+          // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
+          if (item.progress >= 0.85) {
+            item.caught = true; // 아이템을 caught 상태로 표시
+            item.progress = 0.85; // 바구니 위치에 고정
+            this.handleItemReachedBasket(item);
 
-          // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
-          setTimeout(() => {
-            const itemIndex = this.items.indexOf(item);
-            if (itemIndex > -1) {
-              this.items.splice(itemIndex, 1);
+            // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
+            setTimeout(() => {
+              const itemIndex = this.items.indexOf(item);
+              if (itemIndex > -1) {
+                this.items.splice(itemIndex, 1);
 
-              // 레벨 종료 중이고 마지막 아이템이면 레벨업
-              if (this.isLevelEnding && this.items.length === 0) {
-                this.nextLevel();
+                // 레벨 종료 중이고 마지막 아이템이면 레벨업
+                if (this.isLevelEnding && this.items.length === 0) {
+                  this.nextLevel();
+                }
               }
-            }
-          }, 300);
+            }, 300);
+          }
         }
       });
 

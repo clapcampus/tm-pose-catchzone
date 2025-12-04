@@ -272,17 +272,17 @@ button:disabled {
 }
 
 .item.caught {
-  animation: itemCaught 0.3s ease-in forwards;
+  animation: itemCaught 0.3s ease-in forwards !important;
 }
 
 @keyframes itemCaught {
   0% {
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) scale(0.3);
+    transform: scale(0);
   }
 }
 
