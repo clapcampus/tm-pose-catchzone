@@ -271,6 +271,15 @@ button:disabled {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
+@keyframes fall {
+  0% {
+    top: -20%;
+  }
+  100% {
+    top: 120%;
+  }
+}
+
 .item.caught {
   animation: itemCaught 0.3s ease-in forwards !important;
 }
