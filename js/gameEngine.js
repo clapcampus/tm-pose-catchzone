@@ -304,8 +304,8 @@ class GameEngine {
       icon: itemType.icon,
       points: itemType.points,
       isBomb: itemType.isBomb,
-      progress: 0, // 0 ~ 1 (낙하 진행도)
-      dropTime: this.getDropTime(),
+      currentTop: -20, // 아이템의 현재 top 위치 (-20% ~ 120%)
+      dropTime: this.getDropTime(), // 낙하 소요 시간 (초)
       caught: false // 포착 상태 (처음에는 false)
     };
 
@@ -324,15 +324,16 @@ class GameEngine {
       const deltaTime = updateInterval / 1000; // 초 단위
 
       this.items.forEach((item) => {
-        // caught 상태가 아닌 경우만 낙하 진행도 업데이트
+        // caught 상태가 아닌 경우만 위치 업데이트
         if (!item.caught) {
-          item.progress += deltaTime / item.dropTime;
+          // currentTop을 증가시킴 (140% 범위를 dropTime 동안 낙하)
+          const distancePerSecond = 140 / item.dropTime; // 초당 낙하 거리
+          item.currentTop += distancePerSecond * deltaTime;
 
-          // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
-          // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
-          if (item.progress >= 0.85) {
+          // 아이템이 바구니 위치(85%)에 도달했을 때
+          if (item.currentTop >= 85) {
             item.caught = true; // 아이템을 caught 상태로 표시
-            item.progress = 0.85; // 바구니 위치에 고정
+            item.currentTop = 85; // 바구니 위치에 고정
             this.handleItemReachedBasket(item);
 
             // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
@@ -576,13 +577,11 @@ class GameEngine {
         if (!itemEl.classList.contains("caught")) {
           itemEl.classList.add("caught");
           // 위치를 고정 (애니메이션 시작 위치)
-          const topPercent = item.progress * 140 - 20;
-          itemEl.style.top = `${topPercent}%`;
+          itemEl.style.top = `${item.currentTop}%`;
         }
       } else {
         // caught 상태 아님: 위치만 업데이트
-        const topPercent = item.progress * 140 - 20;
-        itemEl.style.top = `${topPercent}%`;
+        itemEl.style.top = `${item.currentTop}%`;
         itemEl.style.animation = "none";
       }
     });
