@@ -305,7 +305,8 @@ class GameEngine {
       points: itemType.points,
       isBomb: itemType.isBomb,
       progress: 0, // 0 ~ 1 (낙하 진행도)
-      dropTime: this.getDropTime()
+      dropTime: this.getDropTime(),
+      caught: false // 포착 상태 (처음에는 false)
     };
 
     this.items.push(item);
@@ -329,12 +330,14 @@ class GameEngine {
         // 아이템이 바구니 위치(약 85%)에 도달했을 때 (progress >= 0.85)
         // 바구니는 화면 아래 10px 정도에 위치하므로 progress 85% 이상에서 만남
         if (item.progress >= 0.85 && !item.caught) {
+          console.log(`[아이템 포착] 타입: ${item.type}, 구역: ${item.zone}, 바구니: ${this.basketPosition}`);
           item.caught = true; // 아이템을 caught 상태로 표시
           this.handleItemReachedBasket(item);
 
           // 애니메이션 완료 후 아이템 제거 (300ms = itemCaught 애니메이션 시간)
           setTimeout(() => {
             const itemIndex = this.items.indexOf(item);
+            console.log(`[아이템 제거] 타입: ${item.type}, 배열 인덱스: ${itemIndex}, 남은 아이템 수: ${this.items.length}`);
             if (itemIndex > -1) {
               this.items.splice(itemIndex, 1);
 
