@@ -113,7 +113,11 @@ function setupGameCallbacks() {
 
   // 게임 종료 콜백
   gameEngine.setGameEndCallback((finalScore, finalLevel) => {
-    // 게임 종료는 이미 gameEngine에서 alert로 표시
+    // 버튼 상태 업데이트: Start 활성화, Stop 비활성화
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
   });
 
   // 바구니 이동 콜백
