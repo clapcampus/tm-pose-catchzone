@@ -567,16 +567,19 @@ class GameEngine {
         itemEl.textContent = item.icon;
         itemEl.setAttribute("data-zone", item.zone);
         itemEl.setAttribute("data-item-id", itemId);
-
-        // CSS 애니메이션으로 낙하 처리
-        // dropTime 동안 -20%에서 120%까지 떨어지도록 설정
-        itemEl.style.animationDuration = `${item.dropTime}s`;
-
         gameArea.appendChild(itemEl);
       }
 
-      // caught 상태인 경우 caught 클래스 추가
-      if (item.caught) {
+      // caught 상태가 아닌 경우 progress에 따라 위치 계산
+      if (!item.caught) {
+        // 위치 계산 (progress: 0 ~ 1)
+        // 아이템이 -20%에서 시작하여 120%까지 떨어짐
+        const topPercent = item.progress * 140 - 20;
+        itemEl.style.top = `${topPercent}%`;
+        // fall 애니메이션을 비활성화하고 수동으로 위치 제어
+        itemEl.style.animation = "none";
+      } else {
+        // caught 상태: 애니메이션을 itemCaught으로 변경
         itemEl.classList.add("caught");
       }
     });
