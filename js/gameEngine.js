@@ -136,6 +136,12 @@ class GameEngine {
     this.level++;
     this.levelTimeRemaining = this.levelTimeLimit;
     this.isLevelEnding = false; // 플래그 리셋
+    this.missCount = 0; // 레벨별 미스 카운트 리셋
+
+    // 레벨 변경 콜백 (UI 업데이트)
+    if (this.onMissChange) {
+      this.onMissChange(this.missCount);
+    }
 
     // 레벨업 대기 시작
     this.pauseForLevelUp();
